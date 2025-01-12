@@ -14,7 +14,7 @@ from random import randint, shuffle
 from datetime import datetime
 import pickle
 import bisect
-
+from groq import Groq
 
 
 # Path to images directory
@@ -96,14 +96,14 @@ def check_spoken_word(correct_word):
 
 
 # Function to check the spelling of the word
-def check_spelling_word(correct_word):
-    st.write(f"Please spell the word '{correct_word}' by speaking each letter.")
-    spoken_text = recognize_live_speech()
-    st.write(f"**You said:** {spoken_text}")
-    if spoken_text.strip().lower() == correct_word.lower():
-        st.success(f"Correct spelling! 🎉 You spelled the word '{correct_word}' correctly.")
-    else:
-        st.error(f"Incorrect spelling. ❌ The correct spelling is '{correct_word}'.")
+#def check_spelling_word(correct_word):
+#    st.write(f"Please spell the word '{correct_word}' by speaking each letter.")
+#   spoken_text = recognize_live_speech()
+#    st.write(f"**You said:** {spoken_text}")
+#    if spoken_text.strip().lower() == correct_word.lower():
+#        st.success(f"Correct spelling! 🎉 You spelled the word '{correct_word}' correctly.")
+#    else:
+#        st.error(f"Incorrect spelling. ❌ The correct spelling is '{correct_word}'.")
 
 
 
@@ -162,11 +162,11 @@ if "current_index" not in st.session_state:
 
 
 # Add Title
-st.title("ABC Learning")
+st.title("Educational")
 
 
 # Dropdown to choose an activity
-option = st.selectbox("Choose an activity:", ["Select", "Learn ABC", "Play Counting Game","Maths for kids", "Progress Report"])
+option = st.selectbox("Choose an activity:", ["Select", "Learn ABC", "Play Counting Game","Maths for kids","Animal Learning","Progress Report"])
 
 
 
@@ -192,12 +192,14 @@ if option == "Learn ABC":
         check_spoken_word(word)
 
     # Button to check spelling of the word
-    if st.button("🔤 Spell the word", key="spell_word"):
-        check_spelling_word(word)
+    #if st.button("🔤 Spell the word", key="spell_word"):
+    #    check_spelling_word(word)
 
     # Next button to move to the next letter
     if st.button("Next", key="next"):
         st.session_state["current_index"] = (current_index+1) % len(letters)
+
+
 
 # "Play Counting Game" Section
 elif option == "Play Counting Game":
@@ -277,164 +279,333 @@ elif option == "Play Counting Game":
     # Run the game
     select_difficulty()
 
- 
-#Maths for kids
+# "Maths for kids" Section
 elif option == "Maths for kids":
-   
-       
-        # Constants
-        NTIMES = 10
-        SUBTRACTION = True
-        LO = 0
-        HI = 10
-        HIGHSCORE_FNAME = "highscores"
+    # Constants
+    NTIMES = 10
+    SUBTRACTION = True
+    LO = 0
+    HI = 10
+    HIGHSCORE_FNAME = "highscores"
 
-        # HighScores Class
-        class HighScores:
-            def __init__(self):
-                self.scores = []
-                self.num_scores = 10
+    # HighScores Class
+    class HighScores:
+        def __init__(self):
+            self.scores = []
+            self.num_scores = 10
 
-            def update(self, score):
-                """Add a score to the list of high scores.
-                Return True if this score is among the top scores, otherwise False.
-                """
-                if len(self.scores) < self.num_scores:
-                    self.scores.append(score)
-                    self.scores.sort()
-                    return True
-                index = bisect.bisect(self.scores, score)
-                if index < self.num_scores:
-                    self.scores.insert(index, score)
-                    self.scores.pop()
-                    return True
-                return False
-
-            def __str__(self):
-                return "\n".join([f"{i + 1:2d}) {score:.2f} sec" for i, score in enumerate(self.scores)])
-
-        # Helper Functions
-        def load_scores():
-            try:
-                with open(HIGHSCORE_FNAME, 'rb') as f:
-                    return pickle.load(f)
-            except FileNotFoundError:
-                return HighScores()
-
-
-        def save_scores(scores):
-            with open(HIGHSCORE_FNAME, 'wb') as f:
-                pickle.dump(scores, f)
-
-
-        def generate_question():
-            a = randint(LO, HI)
-            b = randint(LO, HI)
-            do_subtraction = SUBTRACTION and bool(randint(0, 1))
-
-            if do_subtraction:
-                question = f"{a + b} - {b} = ?"
-                correct_answer = a
-            else:
-                question = f"{a} + {b} = ?"
-                correct_answer = a + b
-
-            options = [correct_answer]
-            while len(options) < 4:
-                wrong_answer = randint(LO - 5, HI + 5)
-                if wrong_answer != correct_answer:
-                    options.append(wrong_answer)
-
-            shuffle(options)
-            return question, options, correct_answer
-
-        # Initialize Session State
-        if "score" not in st.session_state:
-            st.session_state.update({
-                "score": 0,
-                "start_time": None,
-                "message": "",
-                "current_question": None,
-                "correct_answer": None,
-                "answered": False,
-                "option_selected": None,
-            })
-
-        # Header and Theme
-        st.title("🎉 Fun Maths Game for Kids! 🎈")
-        st.markdown(
-            """Welcome to the **Maths Game**! Solve the questions and try to get the fastest score.
-            
-            🧮 Add or subtract numbers, pick the correct answer, and see if you can make it to the **High Scores**! Good luck!
+        def update(self, score):
+            """Add a score to the list of high scores.
+            Return True if this score is among the top scores, otherwise False.
             """
-        )
+            if len(self.scores) < self.num_scores:
+                self.scores.append(score)
+                self.scores.sort()
+                return True
+            index = bisect.bisect(self.scores, score)
+            if index < self.num_scores:
+                self.scores.insert(index, score)
+                self.scores.pop()
+                return True
+            return False
 
-        st.image("https://via.placeholder.com/800x200.png?text=Welcome+to+the+Maths+Adventure!", use_column_width=True)
+        def __str__(self):
+            return "\n".join([f"{i + 1:2d}) {score:.2f} sec" for i, score in enumerate(self.scores)])
 
-        # Start the Game
-        if st.session_state.start_time is None:
-            st.session_state.start_time = time()
+    # Helper Functions
+    def load_scores():
+        try:
+            with open(HIGHSCORE_FNAME, 'rb') as f:
+                return pickle.load(f)
+        except FileNotFoundError:
+            return HighScores()
 
-        # Generate a Question
-        if st.session_state.score < NTIMES and st.session_state.current_question is None:
-            question, options, correct_answer = generate_question()
-            st.session_state.current_question = (question, options)
-            st.session_state.correct_answer = correct_answer
 
-        # Display the Question
-        if st.session_state.current_question:
-            question, options = st.session_state.current_question
+    def save_scores(scores):
+        with open(HIGHSCORE_FNAME, 'wb') as f:
+            pickle.dump(scores, f)
 
-            st.header(f"🦄 Question {st.session_state.score + 1}:")
-            st.subheader(question)
 
-            option_selected = st.radio("Choose your answer:", options, key=f"q{st.session_state.score}")
+    def generate_question():
+        a = randint(LO, HI)
+        b = randint(LO, HI)
+        do_subtraction = SUBTRACTION and bool(randint(0, 1))
 
-            if st.button("🐾 Submit Answer") and not st.session_state.answered:
-                st.session_state.option_selected = option_selected
-                st.session_state.answered = True
+        if do_subtraction:
+            question = f"{a + b} - {b} = ?"
+            correct_answer = a
+        else:
+            question = f"{a} + {b} = ?"
+            correct_answer = a + b
 
-            if st.session_state.answered:
-                if st.session_state.option_selected == st.session_state.correct_answer:
-                    st.success("🎉 Hooray! That's correct! You're amazing! 🐻")
-                    st.balloons()
-                    st.session_state.score += 1
+        options = [correct_answer]
+        while len(options) < 4:
+            wrong_answer = randint(LO - 5, HI + 5)
+            if wrong_answer != correct_answer:
+                options.append(wrong_answer)
+
+        shuffle(options)
+        return question, options, correct_answer
+
+    # Initialize Session State
+    if "score" not in st.session_state:
+        st.session_state.update({
+            "score": 0,
+            "start_time": None,
+            "message": "",
+            "current_question": None,
+            "correct_answer": None,
+            "answered": False,
+            "option_selected": None,
+        })
+
+    # Header and Theme
+    st.title("🎉 Fun Maths Game for Kids! 🎈")
+    st.markdown(
+        """Welcome to the **Maths Game**! Solve the questions and try to get the fastest score.
+        
+        🧮 Add or subtract numbers, pick the correct answer, and see if you can make it to the **High Scores**! Good luck!
+        """
+    )
+
+    st.image("https://via.placeholder.com/800x200.png?text=Welcome+to+the+Maths+Adventure!", use_column_width=True)
+
+    # Start the Game
+    if st.session_state.start_time is None:
+        st.session_state.start_time = time()
+
+    # Generate a Question
+    if st.session_state.score < NTIMES and st.session_state.current_question is None:
+        question, options, correct_answer = generate_question()
+        st.session_state.current_question = (question, options)
+        st.session_state.correct_answer = correct_answer
+
+    # Display the Question
+    if st.session_state.current_question:
+        question, options = st.session_state.current_question
+
+        st.header(f"🦄 Question {st.session_state.score + 1}:")
+        st.subheader(question)
+
+        option_selected = st.radio("Choose your answer:", options, key=f"q{st.session_state.score}")
+
+        if st.button("🐾 Submit Answer") and not st.session_state.answered:
+            st.session_state.option_selected = option_selected
+            st.session_state.answered = True
+
+        if st.session_state.answered:
+            if st.session_state.option_selected == st.session_state.correct_answer:
+                st.success("🎉 Hooray! That's correct! You're amazing! 🐻")
+                st.balloons()
+                st.session_state.score += 1
+            else:
+                st.error(f"❌ Oh no! The correct answer is {st.session_state.correct_answer}. Keep going, you got this! 🐢")
+            
+            st.write(f"🌟 Your current score: {st.session_state.score}/{NTIMES}")
+
+            if st.button("🔄 Next Question"):
+                st.session_state.answered = False
+                st.session_state.current_question = None
+
+    # End of Game
+    if st.session_state.score == NTIMES:
+        elapsed = time() - st.session_state.start_time
+        st.balloons()
+        st.image("https://via.placeholder.com/800x200.png?text=You+Did+It!", use_column_width=True)
+        st.write(f"🎯 **Fantastic!** You completed the game in {elapsed:.2f} seconds! 🏆")
+
+        highscores = load_scores()
+        if highscores.update(elapsed):
+            st.success(f"🏅 Congratulations! You made it to the top {highscores.num_scores} scores!")
+
+        st.write("📜 **High Scores:**")
+        st.text(highscores)
+        save_scores(highscores)
+
+        st.write("🎉 **Your Score:**")
+        st.write(f"⏱️ Time: {elapsed:.2f} seconds")
+
+        st.session_state.score = 0
+        st.session_state.start_time = None
+        st.session_state.current_question = None
+
+    # Quit Button
+    if st.button("🚪 Quit"):
+        st.session_state.score = 0
+        st.session_state.start_time = None
+        st.write("🚪 Game has been quit. Refresh the page to restart.")
+
+# "Animal Learning" Section
+elif option == "Animal Learning":
+    # Constants and Paths
+    DATASET_PATH = r"C:\Users\ASUS\Documents\animal_dataset.csv"
+    DATA_FILE_PATH = r"C:\Users\ASUS\Documents\animal_dataset.csv"
+    MYSQL_CONFIG = {
+    "host": '127.0.0.1',
+    "user": 'root',
+    "password": '9545883002@Sj',
+    "database": 'customer'
+    }
+
+    # Load dataset
+    animal_data = pd.read_csv(DATASET_PATH)
+
+    # Utility Functions
+    def get_animal_details(category):
+        """Fetch animals and details based on category."""
+        return animal_data[animal_data["animal_category"].str.lower() == category.lower()]
+
+    def fetch_characteristics(animal, number_char):
+        """Fetch animal characteristics using Groq API."""
+        client = Groq(api_key="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")
+        try:
+            chat_completion = client.chat.completions.create(
+                messages=[{
+                    "role": "user",
+                    "content": f"""You are an expert teacher for children below age 5, to teach them characteristics for animal 
+                    Please describe {number_char} of {animal} in a numbered list. each characteristic in 5-6 words."""
+                }],
+                model="llama-3.3-70b-versatile",
+            )
+            return chat_completion.choices[0].message.content.split("\n")
+        except Exception as e:
+            st.error(f"Error fetching characteristics: {e}")
+            return []
+
+    def generate_audio(text):
+        """Generate audio from text and return base64 string."""
+        try:
+            tts = gTTS(text, lang="en")
+            audio_file_path = "temp_audio.mp3"
+            tts.save(audio_file_path)
+
+            # Read and encode the audio file to base64
+            with open(audio_file_path, "rb") as f:
+                audio_bytes = f.read()
+                b64_audio = base64.b64encode(audio_bytes).decode()
+
+            os.remove(audio_file_path)
+            return b64_audio
+        except Exception as e:
+            st.error(f"Error generating audio: {e}")
+            return None
+
+    def update_mysql_table(animal_name, is_correct, category):
+        """Insert new entry into MySQL table with animal performance data."""
+        try:
+            conn = mysql.connector.connect(**MYSQL_CONFIG)
+            cursor = conn.cursor()
+
+            # Create table if it doesn't exist
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS animal_data (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    animal_name VARCHAR(255),
+                    category VARCHAR(255),
+                    attempt INT DEFAULT 0,
+                    correct INT DEFAULT 0,
+                    incorrect INT DEFAULT 0,
+                    timestamps TEXT,
+                    dates TEXT
+                )
+            """)
+
+            current_timestamp = datetime.now().timestamp()
+            current_date = datetime.now().date()
+
+            # Always insert a new record
+            cursor.execute("""
+                INSERT INTO animal_data (animal_name, category, attempt, correct, incorrect, timestamps, dates)
+                VALUES (%s, %s, 1, %s, %s, %s, %s)
+            """, (animal_name, category, 1 if is_correct else 0, 0 if is_correct else 1, current_timestamp, current_date))
+
+            conn.commit()
+        except mysql.connector.Error as e:
+            st.error(f"Error inserting data into MySQL table: {e}")
+        finally:
+            cursor.close()
+            conn.close()
+
+    def recognize_speech():
+        """Recognize speech using microphone input."""
+        recognizer = sr.Recognizer()
+        with sr.Microphone() as source:
+            st.info("Listening... Please say the animal's name.")
+            audio_data = recognizer.listen(source)
+            try:
+                return recognizer.recognize_google(audio_data).lower()
+            except (sr.UnknownValueError, sr.RequestError) as e:
+                st.error("Could not understand or request failed. Please try again.")
+                return None
+
+    # Pages
+    def home_page():
+        st.title("Animal Sounds Learning Application")
+        st.subheader("Choose a Category:")
+        categories = ["Farm Animal", "Sea Creature", "Bird", "Wild Animal", "Jungle Animal"]
+        for i, category in enumerate(categories):
+            if st.button(category):
+                st.session_state.selected_category = category.lower()
+                st.session_state.page_index = i + 1
+                break
+
+    def animal_page(category):
+        """Display animal page with selected category."""
+        st.title(f"{category} Animals")
+        animals = get_animal_details(category)
+        if animals.empty:
+            st.error(f"No {category.lower()} found in the dataset.")
+            return
+
+        animal_names = animals["animal_name"].tolist()
+        selected_animal_name = st.selectbox("Select an Animal:", animal_names)
+        selected_animal = animals[animals["animal_name"] == selected_animal_name].iloc[0]
+
+        try:
+            st.image(selected_animal["url"], caption=selected_animal["animal_name"])
+        except Exception:
+            st.error(f"Failed to load image for {selected_animal_name}.")
+
+        if st.button("Play Sound"):
+            b64_audio = generate_audio(selected_animal_name)
+            if b64_audio:
+                st.markdown(f'<audio autoplay style="display:none;"><source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3"></audio>', unsafe_allow_html=True)
+
+        if st.button(f"Try Saying Here"):
+            recognized_text = recognize_speech()
+            if recognized_text:
+                is_correct = recognized_text == selected_animal_name.lower()
+                st.session_state.test_attempts.append({"animal": selected_animal_name, "recognized_text": recognized_text, "is_correct": is_correct})
+
+                if is_correct:
+                    st.success(f"Correct! You said '{selected_animal_name}'.")
                 else:
-                    st.error(f"❌ Oh no! The correct answer is {st.session_state.correct_answer}. Keep going, you got this! 🐢")
+                    st.error(f"Incorrect. You said '{recognized_text}'. Try again.")
+
+                update_mysql_table(selected_animal_name, is_correct, category)
+
+        num_characteristics = st.selectbox("Select number of characteristics to display:", list(range(1, 21)))
+        st.session_state.num_characteristics = num_characteristics
+
+        st.subheader(f"Learn About {selected_animal_name}")
+
+        if st.button(f"Learn Characteristics of {selected_animal_name}"):
+            characteristics = fetch_characteristics(selected_animal_name, num_characteristics)
+            if characteristics:
+                st.write("\n".join([f"{i+1}. {characteristic}" for i, characteristic in enumerate(characteristics)]))
+
+    # Page Routing Logic
+    if "page_index" not in st.session_state:
+        st.session_state.page_index = 0
+        home_page()
+    elif st.session_state.page_index == 0:
+        home_page()
+    else:
+        categories = ["Farm Animal", "Sea Creature", "Bird", "Wild Animal", "Jungle Animal"]
+        category = categories[st.session_state.page_index - 1]
+        animal_page(category)
+
                 
-                st.write(f"🌟 Your current score: {st.session_state.score}/{NTIMES}")
-
-                if st.button("🔄 Next Question"):
-                    st.session_state.answered = False
-                    st.session_state.current_question = None
-
-        # End of Game
-        if st.session_state.score == NTIMES:
-            elapsed = time() - st.session_state.start_time
-            st.balloons()
-            st.image("https://via.placeholder.com/800x200.png?text=You+Did+It!", use_column_width=True)
-            st.write(f"🎯 **Fantastic!** You completed the game in {elapsed:.2f} seconds! 🏆")
-
-            highscores = load_scores()
-            if highscores.update(elapsed):
-                st.success(f"🏅 Congratulations! You made it to the top {highscores.num_scores} scores!")
-
-            st.write("📜 **High Scores:**")
-            st.text(highscores)
-            save_scores(highscores)
-
-            st.write("🎉 **Your Score:**")
-            st.write(f"⏱️ Time: {elapsed:.2f} seconds")
-
-            st.session_state.score = 0
-            st.session_state.start_time = None
-            st.session_state.current_question = None
-
-        # Quit Button
-        if st.button("🚪 Quit"):
-            st.session_state.score = 0
-            st.session_state.start_time = None
-            st.write("🚪 Game has been quit. Refresh the page to restart.")
 
 
 # "Progress Report" Section
@@ -445,31 +616,30 @@ if option == "Progress Report":
     if df.empty:
         st.write("No data available.")
     else:
-        # Display summary statistics of the data
-        st.write("### Summary Statistics")
-        st.write(df.describe())
+        # Extract the relevant columns for clicks (Click_A to Click_Z)
+        letter_columns = [col for col in df.columns if col.startswith('Click_')]  # Click_A to Click_Z
 
-        # Bar chart for individual progress (for each subject)
-        subjects = df.columns[1:]  # Assuming the first column is 'Name', and the remaining are subjects
-        for subject in subjects:
-            st.write(f"### {subject} Progress")
-            fig_bar = px.bar(df, x="Name", y=subject, title=f"Progress in {subject}")
-            st.plotly_chart(fig_bar)
+        # Bar chart for Child clicks on each letter
+        st.write("### Clicks on Each Letter by Child (Name)")
+        fig_bar = px.bar(df, x="Name", y=letter_columns, title="Clicks on Each Letter")
+        st.plotly_chart(fig_bar)
 
-            # Pie chart of distribution for each subject (categorical data)
-            fig_pie = px.pie(df, names=subject, title=f"Distribution of {subject}")
+        # Pie chart showing distribution of clicks on each letter
+        st.write("### Distribution of Clicks for Each Letter")
+        for letter in letter_columns:
+            fig_pie = px.pie(df, names=letter, title=f"Distribution of Clicks for Letter {letter}")
             st.plotly_chart(fig_pie)
 
-        # Line chart of progress over time (if applicable)
+        # Line chart for progress over time (assuming 'Date' is the time column)
         if "Date" in df.columns:
-            for subject in subjects:
-                fig_line = px.line(df, x="Date", y=subject, title=f"Progress Over Time in {subject}")
+            for letter in letter_columns:
+                fig_line = px.line(df, x="Date", y=letter, title=f"Progress in Letter {letter} Over Time")
                 st.plotly_chart(fig_line)
 
         # Additional Insights
         st.write("### Additional Insights")
-        st.write(f"Total number of students: {df['Name'].nunique()}")
-        st.write(f"Subjects in the report: {', '.join(subjects)}")
+        st.write(f"Total number of children: {df['Name'].nunique()}")
+        st.write(f"Letters in the report: {', '.join(letter_columns)}")
 
         # Option to download the full dataset
         st.download_button(
@@ -482,6 +652,8 @@ if option == "Progress Report":
         # Display the detailed progress report in a table format
         st.write("### Detailed Progress Report")
         st.write(df)
+
+
 
     
 else:
