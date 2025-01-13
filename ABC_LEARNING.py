@@ -5,10 +5,12 @@ import plotly.graph_objects as go
 from gtts import gTTS
 import os
 import speech_recognition as sr
-
+import base64
+#import mysql.connector
+import matplotlib.pyplot as plt
 import random
 from PIL import Image
-
+import random
 from time import time
 from random import randint, shuffle
 from datetime import datetime
@@ -16,15 +18,6 @@ import pickle
 import bisect
 from groq import Groq
 
-
-# Path to images directory
-vegetable_images_path = r"C:\Users\ASUS\Documents\vegetable_images"
-
-# List of vegetable image filenames (ensure these images exist in the folder)
-vegetable_images = [
-    'brinjal.jpg', 'cabbage.jpg', 'potato.jpg', 'tomato.jpg',
-    'capsicum.jpg', 'onion.jpg', 'carrot.jpg', 'radish.jpg'
-]
 
 
 
@@ -162,7 +155,7 @@ if "current_index" not in st.session_state:
 
 
 # Add Title
-st.title("Educational")
+st.title("Educational Growth")
 
 
 # Dropdown to choose an activity
@@ -203,12 +196,23 @@ if option == "Learn ABC":
 
 # "Play Counting Game" Section
 elif option == "Play Counting Game":
+    
+    # Path to images directory
+    vegetable_images_path = r'E:\spacece\project 3\vegetable_images'
+
+    # List of vegetable image filenames (ensure these images exist in the folder)
+    vegetable_images = [
+        'brinjal.jpg', 'cabbage.jpg', 'potato.jpg', 'tomato.jpg',
+        'capsicum.jpg', 'onion.jpg', 'carrot.jpg', 'radish.jpg'
+    ]
+
     # Function to display images and ask user to count the vegetables
     def count_vegetables(difficulty='easy'):
-        if 'selected_images' not in st.session_state or 'options' not in st.session_state:
-            # Determine the number of images based on the selected difficulty
+        if 'selected_images' not in st.session_state or 'options' not in st.session_state or 'correct_count' not in st.session_state:
+            # If images are not in session_state, generate them now
             num_images = random.randint(1, 5) if difficulty == 'easy' else random.randint(6, 10)
-            
+            num_images = min(num_images, len(vegetable_images))  # Ensure we don't sample more than available images
+
             # Select random images
             selected_images = random.sample(vegetable_images, num_images)
 
@@ -235,27 +239,35 @@ elif option == "Play Counting Game":
 
         correct_count = st.session_state.correct_count
 
+        # Generate a unique key for the radio button based on the difficulty, selected images, and session ID
+        radio_key = f"radio_button_{difficulty}_{len(st.session_state.selected_images)}_{str(st.session_state.selected_images)}"
+
         # Display options as radio buttons for user to select
         selected_option = st.radio(
             "How many vegetables do you see in the above images?", 
             st.session_state.options, 
-            key=f"radio_button_{str(st.session_state.selected_images)}_{st.session_state.correct_count}"  # Unique key with images and count
+            key=radio_key  # Unique key for the radio button
         )
 
         # Handle the user's response when they click 'Submit'
-        if st.button('Submit'):
+        submit_key = f"submit_button_{str(st.session_state.selected_images)}_{st.session_state.correct_count}"  # Unique key for Submit button
+        if st.button('Submit', key=submit_key):
             if selected_option == correct_count:
                 st.success(f"Correct! There are {correct_count} vegetables!")
+                st.balloons()
             else:
                 st.error(f"Incorrect. There are {correct_count} vegetables. Try again!")
 
         # Continue button to generate a new question
-        if st.button('Next Question'):
+        next_key = f"next_button_{str(st.session_state.selected_images)}_{st.session_state.correct_count}"  # Unique key for Next Question button
+        if st.button('Next Question', key=next_key):
             # Clear the session state for a new question
             st.session_state.pop('selected_images', None)
             st.session_state.pop('options', None)
             st.session_state.pop('correct_count', None)
-            count_vegetables(difficulty=difficulty)  # Regenerate new question
+
+            # Regenerate new question
+            count_vegetables(difficulty=difficulty)
 
     # Main function to select difficulty level and start the game
     def select_difficulty():
@@ -265,10 +277,12 @@ elif option == "Play Counting Game":
         """)
 
         # Add Quit button
-        if st.button("Quit"):
+        quit_key = "quit_button"  # Unique key for Quit button
+        if st.button("Quit", key=quit_key):
             st.warning("You have exited the game. Thank you for playing!")
             st.stop()  # Stops execution of further code
 
+        # Ensure difficulty is selected
         difficulty = st.radio("Select Difficulty Level", ["Easy", "Medium"], key="difficulty_radio")
         count_vegetables(difficulty=difficulty.lower())
 
@@ -281,51 +295,14 @@ elif option == "Play Counting Game":
 
 # "Maths for kids" Section
 elif option == "Maths for kids":
+   
     # Constants
     NTIMES = 10
     SUBTRACTION = True
     LO = 0
     HI = 10
-    HIGHSCORE_FNAME = "highscores"
-
-    # HighScores Class
-    class HighScores:
-        def __init__(self):
-            self.scores = []
-            self.num_scores = 10
-
-        def update(self, score):
-            """Add a score to the list of high scores.
-            Return True if this score is among the top scores, otherwise False.
-            """
-            if len(self.scores) < self.num_scores:
-                self.scores.append(score)
-                self.scores.sort()
-                return True
-            index = bisect.bisect(self.scores, score)
-            if index < self.num_scores:
-                self.scores.insert(index, score)
-                self.scores.pop()
-                return True
-            return False
-
-        def __str__(self):
-            return "\n".join([f"{i + 1:2d}) {score:.2f} sec" for i, score in enumerate(self.scores)])
 
     # Helper Functions
-    def load_scores():
-        try:
-            with open(HIGHSCORE_FNAME, 'rb') as f:
-                return pickle.load(f)
-        except FileNotFoundError:
-            return HighScores()
-
-
-    def save_scores(scores):
-        with open(HIGHSCORE_FNAME, 'wb') as f:
-            pickle.dump(scores, f)
-
-
     def generate_question():
         a = randint(LO, HI)
         b = randint(LO, HI)
@@ -348,23 +325,27 @@ elif option == "Maths for kids":
         return question, options, correct_answer
 
     # Initialize Session State
-    if "score" not in st.session_state:
+    if "start_time" not in st.session_state:
         st.session_state.update({
-            "score": 0,
             "start_time": None,
             "message": "",
             "current_question": None,
-            "correct_answer": None,
             "answered": False,
-            "option_selected": None,
+            "option_selected1": None,
+            "option_selected2": None,
+            "option_selected3": None,
+            "option_selected4": None,
+            "question_count": 0,
+            "question_start_time": [None] * 4,  # List to hold start times for each question
+            "response_times": [None] * 4,  # List to hold response times for each question
         })
 
     # Header and Theme
     st.title("🎉 Fun Maths Game for Kids! 🎈")
     st.markdown(
-        """Welcome to the **Maths Game**! Solve the questions and try to get the fastest score.
+        """Welcome to the **Maths Game**! Solve the questions and try to complete the game quickly.
         
-        🧮 Add or subtract numbers, pick the correct answer, and see if you can make it to the **High Scores**! Good luck!
+        🧮 Add or subtract numbers, pick the correct answer, and see if you can complete the game quickly! Good luck!
         """
     )
 
@@ -374,77 +355,126 @@ elif option == "Maths for kids":
     if st.session_state.start_time is None:
         st.session_state.start_time = time()
 
-    # Generate a Question
-    if st.session_state.score < NTIMES and st.session_state.current_question is None:
-        question, options, correct_answer = generate_question()
-        st.session_state.current_question = (question, options)
-        st.session_state.correct_answer = correct_answer
+    # Generate new questions if necessary
+    if st.session_state.current_question is None and not st.session_state.answered:
+        st.session_state.current_question = [generate_question() for _ in range(4)]
 
-    # Display the Question
-    if st.session_state.current_question:
-        question, options = st.session_state.current_question
+    # If the player has already answered and submitted answers
+    if st.session_state.answered:
+        questions_data = st.session_state.current_question
 
-        st.header(f"🦄 Question {st.session_state.score + 1}:")
-        st.subheader(question)
+        # Display the questions and answers
+        answers = [
+            (st.session_state.option_selected1, questions_data[0][2], "Question 1", st.session_state.response_times[0]),
+            (st.session_state.option_selected2, questions_data[1][2], "Question 2", st.session_state.response_times[1]),
+            (st.session_state.option_selected3, questions_data[2][2], "Question 3", st.session_state.response_times[2]),
+            (st.session_state.option_selected4, questions_data[3][2], "Question 4", st.session_state.response_times[3]),
+        ]
 
-        option_selected = st.radio("Choose your answer:", options, key=f"q{st.session_state.score}")
-
-        if st.button("🐾 Submit Answer") and not st.session_state.answered:
-            st.session_state.option_selected = option_selected
-            st.session_state.answered = True
-
-        if st.session_state.answered:
-            if st.session_state.option_selected == st.session_state.correct_answer:
-                st.success("🎉 Hooray! That's correct! You're amazing! 🐻")
-                st.balloons()
-                st.session_state.score += 1
+        correct_count = 0
+        answer_details = []
+        for idx, (selected, correct, question, response_time) in enumerate(answers):
+            if selected == correct:
+                correct_count += 1  # Increment correct answer count
+                result = "Correct"
             else:
-                st.error(f"❌ Oh no! The correct answer is {st.session_state.correct_answer}. Keep going, you got this! 🐢")
-            
-            st.write(f"🌟 Your current score: {st.session_state.score}/{NTIMES}")
+                result = "Incorrect"
+            answer_details.append(f"{question}: You chose {selected}. Correct answer is {correct} ({result}). Response time: {response_time:.2f} seconds.")
 
-            if st.button("🔄 Next Question"):
-                st.session_state.answered = False
-                st.session_state.current_question = None
+        # Show the answers and results in a list
+        st.write("### Answers Summary:")
+        for detail in answer_details:
+            st.write(f"- {detail}")
 
-    # End of Game
-    if st.session_state.score == NTIMES:
-        elapsed = time() - st.session_state.start_time
-        st.balloons()
-        st.image("https://via.placeholder.com/800x200.png?text=You+Did+It!", use_column_width=True)
-        st.write(f"🎯 **Fantastic!** You completed the game in {elapsed:.2f} seconds! 🏆")
+        if correct_count == 4:
+            st.success("🎉 Hooray! All answers are correct! You're amazing! 🐻")
+            st.balloons()
+        else:
+            st.error(f"❌ Oh no! {4 - correct_count} answers were incorrect. Keep going!")
 
-        highscores = load_scores()
-        if highscores.update(elapsed):
-            st.success(f"🏅 Congratulations! You made it to the top {highscores.num_scores} scores!")
+        next_button = st.button("🔄 Next Questions", key="next_questions")
+        if next_button:
+            # Reset for the next round
+            st.session_state.answered = False  # Reset the answered flag
+            st.session_state.current_question = None  # Clear current questions to generate new ones
+            st.session_state.current_question = [generate_question() for _ in range(4)]
+            st.session_state.response_times = [None] * 4  # Reset response times for new questions
 
-        st.write("📜 **High Scores:**")
-        st.text(highscores)
-        save_scores(highscores)
+    else:
+        # Generate Four Questions if not already generated
+        questions_data = st.session_state.current_question
+        row1_col1, row1_col2 = st.columns(2)
+        row2_col1, row2_col2 = st.columns(2)
 
-        st.write("🎉 **Your Score:**")
-        st.write(f"⏱️ Time: {elapsed:.2f} seconds")
+        # First row of questions (Question 1 and Question 2)
+        with row1_col1:
+            question, options, correct_answer = questions_data[0]
+            st.header(f"🦄 Question 1:")
+            st.subheader(question)
+            option_selected1 = st.radio("Choose your answer:", options, key="q1")
+            if st.session_state.question_start_time[0] is None:
+                st.session_state.question_start_time[0] = time()  # Start time for question 1
 
-        st.session_state.score = 0
-        st.session_state.start_time = None
-        st.session_state.current_question = None
+        with row1_col2:
+            question, options, correct_answer = questions_data[1]
+            st.header(f"🦄 Question 2:")
+            st.subheader(question)
+            option_selected2 = st.radio("Choose your answer:", options, key="q2")
+            if st.session_state.question_start_time[1] is None:
+                st.session_state.question_start_time[1] = time()  # Start time for question 2
+
+        # Second row of questions (Question 3 and Question 4)
+        with row2_col1:
+            question, options, correct_answer = questions_data[2]
+            st.header(f"🦄 Question 3:")
+            st.subheader(question)
+            option_selected3 = st.radio("Choose your answer:", options, key="q3")
+            if st.session_state.question_start_time[2] is None:
+                st.session_state.question_start_time[2] = time()  # Start time for question 3
+
+        with row2_col2:
+            question, options, correct_answer = questions_data[3]
+            st.header(f"🦄 Question 4:")
+            st.subheader(question)
+            option_selected4 = st.radio("Choose your answer:", options, key="q4")
+            if st.session_state.question_start_time[3] is None:
+                st.session_state.question_start_time[3] = time()  # Start time for question 4
+
+        # Submit answers button
+        submit_button = st.button("🐾 Submit Answers", key="submit_answers")
+
+        if submit_button and not st.session_state.answered:
+            st.session_state.option_selected1 = option_selected1
+            st.session_state.option_selected2 = option_selected2
+            st.session_state.option_selected3 = option_selected3
+            st.session_state.option_selected4 = option_selected4
+
+            # Calculate the response times for each question
+            st.session_state.response_times[0] = time() - st.session_state.question_start_time[0]
+            st.session_state.response_times[1] = time() - st.session_state.question_start_time[1]
+            st.session_state.response_times[2] = time() - st.session_state.question_start_time[2]
+            st.session_state.response_times[3] = time() - st.session_state.question_start_time[3]
+
+            st.session_state.answered = True
 
     # Quit Button
     if st.button("🚪 Quit"):
-        st.session_state.score = 0
         st.session_state.start_time = None
+        st.session_state.current_question = None
         st.write("🚪 Game has been quit. Refresh the page to restart.")
+
 
 # "Animal Learning" Section
 elif option == "Animal Learning":
+
     # Constants and Paths
-    DATASET_PATH = r"C:\Users\ASUS\Documents\animal_dataset.csv"
-    DATA_FILE_PATH = r"C:\Users\ASUS\Documents\animal_dataset.csv"
+    DATASET_PATH = "animal_dataset.csv"
+    DATA_FILE_PATH = "animal_data.csv"
     MYSQL_CONFIG = {
-    "host": '127.0.0.1',
-    "user": 'root',
-    "password": '9545883002@Sj',
-    "database": 'customer'
+        "host": '127.0.0.1',
+        "user": 'root',
+        "password": '9545883002@Sj',
+        "database": 'customer'
     }
 
     # Load dataset
@@ -463,7 +493,7 @@ elif option == "Animal Learning":
                 messages=[{
                     "role": "user",
                     "content": f"""You are an expert teacher for children below age 5, to teach them characteristics for animal 
-                    Please describe {number_char} of {animal} in a numbered list. each characteristic in 5-6 words."""
+                    Please describe {number_char} of {animal} in a numbered list. each characteristics in 5-6 words."""
                 }],
                 model="llama-3.3-70b-versatile",
             )
@@ -583,27 +613,165 @@ elif option == "Animal Learning":
                     st.error(f"Incorrect. You said '{recognized_text}'. Try again.")
 
                 update_mysql_table(selected_animal_name, is_correct, category)
-
+                
         num_characteristics = st.selectbox("Select number of characteristics to display:", list(range(1, 21)))
         st.session_state.num_characteristics = num_characteristics
 
-        st.subheader(f"Learn About {selected_animal_name}")
+        st.subheader(f"{selected_animal_name} Characteristics:")
+        characteristics = fetch_characteristics(selected_animal_name, num_characteristics)
+        if characteristics:
+            for char in characteristics:
+                st.write(char)
+        else:
+            st.error("Failed to fetch characteristics. Please try again.")
 
-        if st.button(f"Learn Characteristics of {selected_animal_name}"):
-            characteristics = fetch_characteristics(selected_animal_name, num_characteristics)
-            if characteristics:
-                st.write("\n".join([f"{i+1}. {characteristic}" for i, characteristic in enumerate(characteristics)]))
+    def load_data_from_mysql():
+        try:
+            # Establish the connection
+            conn = mysql.connector.connect(
+                **MYSQL_CONFIG
+            )
+            query = "SELECT animal_name, category, attempt, correct, incorrect, timestamps, dates FROM animal_data"
+            df = pd.read_sql(query, conn)
 
-    # Page Routing Logic
+            return df
+
+        except mysql.connector.Error as e:
+            st.error(f"Error fetching data from MySQL: {e}")
+            return pd.DataFrame()  # Return an empty DataFrame on error
+
+        finally:
+            if conn:
+                conn.close()
+    def dashboard_page():
+        st.title("Learning Dashboard")
+
+        # Load data from MySQL or mock data
+        df = load_data_from_mysql()  # Replace this with your actual loading function
+        if df.empty:
+            st.warning("No data available.")
+            return
+
+        # Sidebar filters for category and animal name
+        st.sidebar.header("Filters")
+        categories = df['category'].unique()
+        selected_category = st.sidebar.selectbox("Select Category", ["All"] + list(categories))
+        
+        if selected_category != "All":
+            df = df[df['category'] == selected_category]
+
+        animal_names = df['animal_name'].unique()
+        selected_animal = st.sidebar.selectbox("Select Animal", ["All"] + list(animal_names))
+        
+        if selected_animal != "All":
+            df = df[df['animal_name'] == selected_animal]
+
+        # Overall summary stats
+        total_attempts = df['attempt'].sum()
+        total_correct = df['correct'].sum()
+        total_incorrect = df['incorrect'].sum()
+
+        # Row-wise layout
+        col1, col2 = st.columns(2)
+
+        # Bar chart of attempts over animals
+        with col1:
+            st.subheader("Attempts Over Animal Name")
+            bar_chart_data = df.groupby('animal_name')[['attempt', 'correct', 'incorrect']].sum().reset_index()
+            fig = px.bar(bar_chart_data, x='animal_name', y=['correct', 'incorrect', 'attempt'], barmode='stack', 
+                        labels={'value': 'Count', 'animal_name': 'Animal Name'}, title="Attempts per Animal")
+            st.plotly_chart(fig)
+
+        # Pie chart of correct vs incorrect
+        with col2:
+            st.subheader("Correct Vs Incorrect")
+            pie_data = pd.DataFrame({
+                "Metric": ["Correct", "Incorrect"],
+                "Count": [total_correct, total_incorrect]
+            })
+            fig = px.pie(pie_data, values="Count", names="Metric", title="Correct vs Incorrect Distribution")
+            st.plotly_chart(fig)
+
+        # Line chart for trends over time
+        st.subheader("Trends in Attempts Over dates")
+        trend_data = df.groupby('dates')[['attempt', 'correct', 'incorrect']].sum().reset_index()
+        fig = px.line(trend_data, x='dates', y=['attempt', 'correct', 'incorrect'], 
+                    labels={'value': 'Count', 'dates': 'Day'}, title="Daily Trends")
+        st.plotly_chart(fig)
+
+
+
+        st.title("Learning Dashboard")
+
+        # Load data from MySQL
+        df = load_data_from_mysql()  # Assuming this function loads the relevant data
+
+        if df.empty:
+            st.warning("No data available.")
+            return
+
+        # Split screen into two columns
+        col1, col2 = st.columns(2)
+
+        # Left column - Pie chart
+        with col1:
+            st.header("Animal Distribution")
+            # Pie chart of the categories
+            category_counts = df['category'].value_counts()
+            fig = px.pie(names=category_counts.index, values=category_counts.values, title="Animal Categories")
+            st.plotly_chart(fig)
+
+        # Right column - Animal Category selection
+        with col2:
+            st.header("Select Animal Category")
+            # Dropdown to select animal category
+            selected_category = st.selectbox("Choose an Animal Category", df['category'].unique())
+            
+            # Filter the DataFrame based on selected category
+            filtered_df = df[df['category'] == selected_category]
+            
+            st.write(f"Showing animals for category: {selected_category}")
+            st.dataframe(filtered_df)
+
+            # Generate and display the statistics (number of attempts, correct, incorrect)
+            attempts = filtered_df['attempt'].sum()
+            correct = filtered_df['correct'].sum()
+            incorrect = filtered_df['incorrect'].sum()
+
+            st.subheader("Category Report")
+            st.write(f"Total Attempts: {attempts}")
+            st.write(f"Correct: {correct}")
+            st.write(f"Incorrect: {incorrect}")
+            
+            # Optionally, you can show a bar chart to visualize the numbers
+            report_data = {'Attempts': attempts, 'Correct': correct, 'Incorrect': incorrect}
+            report_df = pd.DataFrame(list(report_data.items()), columns=["Metric", "Value"])
+            st.bar_chart(report_df.set_index('Metric'))
+    # Session State Initialization
     if "page_index" not in st.session_state:
+        st.session_state.page_index = 0  # Home page
+    if "test_attempts" not in st.session_state:
+        st.session_state.test_attempts = []
+
+    # Pages List
+    pages = [
+        home_page,  # Home Page
+        lambda: animal_page("Farm Animals"),
+        lambda: animal_page("Sea Creatures"),
+        lambda: animal_page("Bird"),
+        lambda: animal_page("Wild Animal"),
+        lambda: animal_page("Jungle Animal"),
+        dashboard_page
+    ]
+
+    # Display Page
+    pages[st.session_state.page_index]()
+
+    # Navigation
+    if st.session_state.page_index == 0 and st.button("Go to Dashboard"):
+        st.session_state.page_index = 6
+    elif st.session_state.page_index > 0 and st.button("Back to Home"):
         st.session_state.page_index = 0
-        home_page()
-    elif st.session_state.page_index == 0:
-        home_page()
-    else:
-        categories = ["Farm Animal", "Sea Creature", "Bird", "Wild Animal", "Jungle Animal"]
-        category = categories[st.session_state.page_index - 1]
-        animal_page(category)
 
                 
 
