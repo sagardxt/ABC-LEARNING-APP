@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -19,8 +20,20 @@ import bisect
 from groq import Groq
 from num2words import num2words  # Convert numbers to words
 import json
-
-
+st.image("logo.jpg", width=150)
+st.markdown("""
+    <style>
+    .stButton>button {
+        background-color: gray;
+        color: white;
+        border: none;
+        transition: background-color 0.3s ease; /* Smooth transition */
+    }
+    .stButton>button:hover {
+        background-color: orange; /* Change to gray on hover */
+    }
+    </style>
+    """, unsafe_allow_html=True)
 # Load data from Google Sheets (example URL)
 # You should replace with your own Google Sheets URL
 @st.cache_data
@@ -221,6 +234,7 @@ def login_page():
     # Username and Password Section
     user = st.text_input("username", placeholder="Enter your username")
     p = st.text_input("password", placeholder="Enter your password", type="password")
+    # Custom CSS for the button
 
     # Login Button
     if st.button("Log In"):
@@ -304,7 +318,7 @@ def update_signup_table(child_name, age, parent_name, password, phone, gmail, us
         # Create the table if it doesn't exist
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS child_details (
-                id INT AUTO_INCREMENT PRIMARY KEY,
+                child_id INT AUTO_INCREMENT PRIMARY KEY,
                 child_name VARCHAR(255) NOT NULL,
                 age INT NOT NULL,
                 parent_name VARCHAR(255) NOT NULL,
@@ -450,7 +464,7 @@ if st.session_state.log == 2:
         # Optionally, display the data in a more user-friendly format
         for index, row in df.iterrows():
             # Change the color of the child name (left side)
-            st.markdown(f"<p style='color:white; display:inline-block'>Child Name : {row['child_name']}  </br> User Name : {row['username']}</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='color:black; display:inline-block'>Child Name : {row['child_name']}  </br> User Name : {row['username']}</p>", unsafe_allow_html=True)
             
             # Add space between the child name and username
             st.write("    ")
@@ -494,15 +508,17 @@ if st.session_state.log == 2:
             if st.button("Go to Dashboard"):
                 st.session_state["dashboard_active"] = True
 
+           #Back Button
+            if st.button("Back", key="Back"):
+                st.session_state["current_index"] = (current_index - 1) % len(letters)
+
 
   
 
 
 # "Play Counting Game" Section
     elif option == "Play Counting Game":
-        
-
-        # Path to images directory for vegetables
+        # IF you get any error, add the file Path of images directory for vegetables here
         vegetable_images_path = 'vegetable_images'  
 
         # List of vegetable image filenames (ensure these images exist in the folder)
@@ -511,10 +527,13 @@ if st.session_state.log == 2:
             'capsicum.jpg', 'onion.jpg', 'carrot.jpg', 'radish.jpg'
         ]
 
-        # Function to display images and ask user to count the vegetables
+        
         def count_vegetables(difficulty='easy'):
+            
+            if 'question_number' not in st.session_state:
+                st.session_state.question_number = 1  
+            
             if 'selected_images' not in st.session_state or 'options' not in st.session_state or 'correct_count' not in st.session_state:
-                
                 if difficulty == 'easy':
                     num_images = random.randint(1, 8)  
                 elif difficulty == 'medium':
@@ -522,14 +541,13 @@ if st.session_state.log == 2:
                 else:  # Hard difficulty
                     num_images = random.randint(15, 20)  
 
-               
-                selected_images = random.choices(vegetable_images, k=num_images)  # Allow repetition of images
+                selected_images = random.choices(vegetable_images, k=num_images)  
 
                 # Store the selected images and their count in session state
                 st.session_state.selected_images = selected_images
                 st.session_state.correct_count = len(selected_images)
 
-                # Generate 4 unique options (including the correct one)
+                
                 options = {st.session_state.correct_count}
                 while len(options) < 4:
                     random_option = st.session_state.correct_count + random.randint(-1, 2)
@@ -537,21 +555,21 @@ if st.session_state.log == 2:
 
                 st.session_state.options = list(options)
 
-            
-            st.subheader("Guess how many vegetables you see:")
+            # Display question number and vegetable images
+            st.subheader(f"Question {st.session_state.question_number}: Guess how many vegetables you see?")
             cols = st.columns(len(st.session_state.selected_images))  
             image_paths = [os.path.join(vegetable_images_path, img) for img in st.session_state.selected_images]
             
             for i, image_path in enumerate(image_paths):
                 with cols[i]:
-                    st.image(image_path, width=150)  # Resize each image to fit the columns
+                    st.image(image_path, width=150)  
 
             correct_count = st.session_state.correct_count
 
-            # Generate a unique key for the radio button based on the difficulty, selected images, and session ID
+            
             radio_key = f"radio_button_{difficulty}_{len(st.session_state.selected_images)}_{str(st.session_state.selected_images)}"
 
-            # Display options as radio buttons for user to select
+            
             selected_option = st.radio(
                 "How many vegetables do you see in the above images?", 
                 st.session_state.options, 
@@ -563,14 +581,17 @@ if st.session_state.log == 2:
             if st.button('Submit', key=submit_key):
                 if selected_option == correct_count:
                     st.success(f"Correct! There are {correct_count} vegetables! 🎉")
-                    st.balloons()  # Add confetti for celebration
+                    st.balloons()  
                 else:
                     st.error(f"Incorrect. There are {correct_count} vegetables. Try again! 😢")
 
             # Continue button to generate a new question
             next_key = f"next_button_{str(st.session_state.selected_images)}_{st.session_state.correct_count}"  # Unique key for Next Question button
             if st.button('Next Question', key=next_key):
-                # Clear the session state for a new question
+                # Increment the question number
+                st.session_state.question_number += 1
+                
+                
                 st.session_state.pop('selected_images', None)
                 st.session_state.pop('options', None)
                 st.session_state.pop('correct_count', None)
@@ -580,9 +601,9 @@ if st.session_state.log == 2:
 
         # Function for the "Guess the Number" Game
         def guess_the_number(): 
-            DATASET_FOLDER = "no_images"  # Folder containing images named 1.png, 2.png, ..., 20.png
+            DATASET_FOLDER = "no_images"  
             IMAGE_SIZE = (100, 100)  
-            OPTION_COUNT = 4  # Number of options to display
+            OPTION_COUNT = 4  
             # Helper Functions
             def get_image_path(value):
                 """Returns the file path of the image corresponding to the given value."""
@@ -590,7 +611,7 @@ if st.session_state.log == 2:
 
             def display_number_images(number, image_size=(100, 100)):
                 """Displays the images corresponding to the digits of the number."""
-                digits = list(str(number))  # Split the number into its digits
+                digits = list(str(number))  
                 images = []
                 
                 for d in digits:
@@ -604,8 +625,8 @@ if st.session_state.log == 2:
                     col.image(img, use_container_width=True)  # Use resized image
 
             def generate_options(correct_number):
-                """Generates unique word options including the correct answer."""
-                options = {num2words(correct_number)}  # Start with the correct answer
+                """Generates unique word options including the correct answer.""" 
+                options = {num2words(correct_number)} 
                 while len(options) < OPTION_COUNT:
                     random_number = random.randint(1, 999)
                     options.add(num2words(random_number))
@@ -613,7 +634,7 @@ if st.session_state.log == 2:
                 random.shuffle(options)  # Shuffle the options
                 return options
 
-            # Initialize Session State
+            
             if "target_number" not in st.session_state or "options" not in st.session_state:
                 st.session_state.target_number = random.randint(1, 999)  # Random number to guess
                 st.session_state.message = ""
@@ -634,13 +655,13 @@ if st.session_state.log == 2:
             st.header("🖼️ Number Images")
             display_number_images(st.session_state.target_number, IMAGE_SIZE)
 
-            # Display options in a single list (radio buttons)
+            
             selected_option = st.radio(
                 "Select the correct number from the options below:",
                 st.session_state.options  # This will display the list of options
             )
 
-            # Store the selected option in session state
+            
             st.session_state.selected_option = selected_option
 
             # Submit Button
@@ -652,7 +673,7 @@ if st.session_state.log == 2:
                     st.error(f"❌ Incorrect! The correct answer was {num2words(st.session_state.target_number)}.")
                     st.session_state.message = "Try again with a new number!"
 
-            # Display the message for feedback
+            
             if st.session_state.message:
                 st.write(st.session_state.message)
 
@@ -660,19 +681,17 @@ if st.session_state.log == 2:
             next_button = st.button("Next Question")
             if next_button:
                 # Reset session state for the next question
-                st.session_state.target_number = random.randint(1, 999)  # Generate a new random number
+                st.session_state.target_number = random.randint(1, 999)  
                 st.session_state.options = generate_options(st.session_state.target_number)  # Generate new options
-                st.session_state.selected_option = None  # Reset selected option
+                st.session_state.selected_option = None  
                 st.session_state.message = ""  # Reset message
 
-                # Redraw the page to show the new question
+                
                 st.rerun()
 
             # Quit Button
             if st.button("🚪 Quit"):
                 st.write("🚪 Game has been quit. Refresh the page to restart.")
-
-
 
         # Main function to select difficulty level and start the game
         def select_game_type():
@@ -701,10 +720,10 @@ if st.session_state.log == 2:
 
 # "Maths for kids" Section
     elif option == "Maths for kids":
-    
+
         # Constants
-        LO = 1  # Lower range (avoiding zero for division)
-        HI = 12  # Upper range for numbers
+        LO = 1  
+        HI = 12  
 
         # Helper Functions
         def generate_question(operations):
@@ -726,17 +745,19 @@ if st.session_state.log == 2:
                 question = f"{product} ÷ {b} = ?"
                 correct_answer = a
 
-            # Generate options including the correct answer
-            options = [correct_answer]
+            
+            options = {correct_answer}  
             while len(options) < 4:
                 wrong_answer = randint(LO - 5, HI + 5)
+                
                 if wrong_answer != correct_answer and wrong_answer > 0:
-                    options.append(wrong_answer)
+                    options.add(wrong_answer)
 
+            options = list(options) 
             shuffle(options)
             return question, options, correct_answer
 
-        # Initialize Session State
+        
         if "start_time" not in st.session_state:
             st.session_state.update({
                 "start_time": None,
@@ -748,8 +769,8 @@ if st.session_state.log == 2:
                 "option_selected2": None,
                 "option_selected3": None,
                 "option_selected4": None,
-                "question_start_time": [None] * 4,  # Start times for each question
-                "response_times": [None] * 4,  # Response times for each question
+                "question_start_time": [None] * 4,  
+                "response_times": [None] * 4,  
             })
 
         # Header and Theme
@@ -766,7 +787,7 @@ if st.session_state.log == 2:
         operations = ["Addition", "Subtraction", "Multiplication", "Division"]
         selected_operations = st.sidebar.multiselect("Select operations to practice:", operations, default=["Addition"])
 
-        # Ensure at least one operation is selected
+        
         if not selected_operations:
             st.error("Please select at least one operation to start the game.")
         else:
@@ -774,11 +795,11 @@ if st.session_state.log == 2:
             if st.session_state.start_time is None:
                 st.session_state.start_time = time()
 
-            # Generate new questions if necessary
+            
             if st.session_state.current_question is None and not st.session_state.answered:
                 st.session_state.current_question = [generate_question(selected_operations) for _ in range(4)]
 
-            # If the player has already answered and submitted answers
+            
             if st.session_state.answered:
                 questions_data = st.session_state.current_question
 
@@ -825,7 +846,7 @@ if st.session_state.log == 2:
                 row1_col1, row1_col2 = st.columns(2)
                 row2_col1, row2_col2 = st.columns(2)
 
-                # First row of questions (Question 1 and Question 2)
+                
                 with row1_col1:
                     question, options, correct_answer = questions_data[0]
                     st.header(f"🦄 Question 1:")
@@ -842,7 +863,7 @@ if st.session_state.log == 2:
                     if st.session_state.question_start_time[1] is None:
                         st.session_state.question_start_time[1] = time()
 
-                # Second row of questions (Question 3 and Question 4)
+                
                 with row2_col1:
                     question, options, correct_answer = questions_data[2]
                     st.header(f"🦄 Question 3:")
@@ -881,6 +902,8 @@ if st.session_state.log == 2:
                 st.session_state.start_time = None
                 st.session_state.current_question = None
                 st.write("🚪 Game has been quit. Refresh the page to restart.")
+                st.write("🎉 Thank you for playing! We hope you had fun! 🎈")
+
 
 
 # "Animal Learning" Section
@@ -1238,7 +1261,7 @@ if st.session_state.log == 2:
                 "Played a key role in the Indian independence movement through non-violent civil disobedience.",
                 "Led several important movements like the Salt March and Quit India Movement.",
                 "Known as the 'Father of the Nation'.",
-                "Famous for his philosophy of 'Ahimsa' (non-violence).",
+                "Famous for his philosophy of 'Ahinsa' (non-violence).",
                 "Assassinated on 30 January 1948."
             ]},
             {"name": "Jawaharlal Nehru", "image": "Jawaharlal Nehru.jpg", "info": [
@@ -1279,12 +1302,12 @@ if st.session_state.log == 2:
                 "Famous for her bravery and determination, she became a symbol of resistance.",
                 "Died on 18 June 1858, in battle, while defending Jhansi."
             ]},
-            {"name": "Chandra Sekhar Azad", "image": "Chandra Sekhar Azad.jpg", "info": [
+            {"name": "Chandra Shekhar Azad", "image": "Chandra Sekhar Azad.jpg", "info": [
                 "Born: 23 July 1906, Bhavra, Madhya Pradesh, India.",
                 "One of the most prominent revolutionaries in the Indian independence movement.",
                 "Played a significant role in the Hindustan Socialist Republican Association (HSRA).",
-                "Famous for his slogan 'Dilsay ki Azadi.'",
-                "Committed suicide on 27 February 1931, after being surrounded by the police, maintaining his vow to never be captured alive."
+                "Famous for his slogan 'Dushman ki goliyon ka saamna karenge, Azad hi rahe hain, Azad hi rahenge.'",
+                "On February 27, 1931, Azad arranged to meet a revolutionary at Allahabad’s Alfred Park (now Azad Park). He was betrayed to the police, who surrounded him as soon as he entered the park. A gun battle ensued, in which two police officers were wounded, and Azad was fatally shot."
             ]},
             {"name": "Dr. B.R. Ambedkar", "image": "Dr. B.R. Ambedkar.jpg", "info": [
                 "Born: 14 April 1891, Mhow, Madhya Pradesh, India.",
@@ -1299,9 +1322,9 @@ if st.session_state.log == 2:
                 "Known for his role in the 1857 Indian Rebellion, also called the First War of Indian Independence.",
                 "A sepoy in the British East India Company’s army, he sparked the rebellion by attacking his officers.",
                 "Famous for his courage and is regarded as one of the first freedom fighters of India.",
-                "Hanged on 21 April 1857, for his role in the rebellion."
+                "Mangal Pandey was arrested and sentenced to death after he attacked British officers in Barrackpore on March 29, 1857. Anticipating a revolt, British authorities moved up his initial execution date from April 18 to April 8, when he was hanged"
             ]},
-        
+
 
             
         ]
@@ -1388,7 +1411,7 @@ if st.session_state.log == 2:
 
 
 
-        
+                
     else:
         st.write("Choose an activity from the dropdown above.")
 elif st.session_state.log == 1:
